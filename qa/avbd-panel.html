@@ -1,0 +1,43 @@
+<!doctype html><title>avbd panel wall lab</title>
+<script type="importmap">{ "imports": { "three": "../vendor/three/three.module.js", "three/webgpu": "../vendor/three-avbd/webgpu-shim.js", "three-avbd": "../vendor/three-avbd/lib/world.js" } }</script>
+<script type="module">
+import { World } from 'three-avbd';
+const log = (m) => { document.body.insertAdjacentHTML('beforeend', '<pre>' + m + '</pre>'); console.log(m); };
+const Q = new URLSearchParams(location.search); const g = (k, d) => (Q.has(k) ? +Q.get(k) : d);
+try {
+  const SX = g('sx', 0.8), SY = g('sy', 0.4), SZ = g('sz', 0.2), ROWS = g('rows', 15), COLS = g('cols', 8), BASE = g('base', 0.8), DENS = g('dens', 8), IT = g('it', 6);
+  const DOWN = g('down', 64), SIDE = g('side', 36), CARRY = g('carry', 0.08), BOND = g('bond', 1), DV = g('dv', 0), DT = g('dt', 1 / 60), ALPHA = Q.get('alpha'), BETA = Q.get('beta');
+  const adapter = await navigator.gpu.requestAdapter(); const device = await adapter.requestDevice();
+  const world = await World.create({ device, maxBodies: 4096, iterations: IT, dt: DT });
+  if (ALPHA) world.params.alpha = +ALPHA; if (BETA) world.params.betaLin = +BETA;
+  world.addBox({ size: [60, 1, 60], position: [0, -0.5, 0], fixed: true });
+  if (BASE > 0) world.addBox({ size: [COLS * SX + 2, BASE, 4], position: [0, BASE / 2, 0], fixed: true, friction: 0.7 });
+  const items = [];
+  for (let r = 0; r < ROWS; r++) {
+    const y = BASE + SY / 2 + r * SY, half = COLS * SX / 2; const cells = [];
+    if (!BOND || r % 2 === 0) for (let c = 0; c < COLS; c++) cells.push([-half + SX / 2 + c * SX, SX]);
+    else { cells.push([-half + SX / 4, SX / 2]); for (let c = 1; c < COLS; c++) cells.push([-half + c * SX, SX]); cells.push([half - SX / 4, SX / 2]); }
+    for (const [u, w] of cells) items.push({ x: u, y, w, r, body: world.addBox({ size: [w, SY, SZ], position: [u, y, 0], density: DENS, friction: 0.6 }) });
+  }
+  let joints = 0;
+  for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
+    const a = items[i], b = items[j];
+    const ox = Math.min(a.x + a.w / 2, b.x + b.w / 2) - Math.max(a.x - a.w / 2, b.x - b.w / 2), dy = Math.abs(a.y - b.y);
+    if (dy < 1e-3 && Math.abs(ox) < 0.03 && ox > -0.03) { // side neighbours
+      const cx = (a.x + b.x) / 2; world.addJoint(a.body, b.body, { anchorA: [cx - a.x, 0, 0], anchorB: [cx - b.x, 0, 0], breakForce: SIDE * (Math.min(a.w, b.w) / SX), breakOnPull: true }); joints++;
+    } else if (Math.abs(dy - SY) < 1e-3 && ox > 0.08) {
+      const lo = a.y < b.y ? a : b, hi = a.y < b.y ? b : a; const cx = (Math.max(a.x - a.w / 2, b.x - b.w / 2) + Math.min(a.x + a.w / 2, b.x + b.w / 2)) / 2;
+      const carry = 1 + CARRY * (ROWS - 1 - lo.r);
+      world.addJoint(lo.body, hi.body, { anchorA: [cx - lo.x, SY / 2, 0], anchorB: [cx - hi.x, -SY / 2, 0], breakForce: DOWN * carry * (Math.min(a.w, b.w) / SX), breakOnPull: true }); joints++;
+    }
+  }
+  const bodies = items.map((it) => it.body); world.readbackEvery = 1; world.track(bodies);
+  let broken = 0; world.onBreak(() => broken++);
+  const stats = async (label) => { await world.read(bodies); let moved = 0, maxd = 0, maxv = 0; for (const it of items) { const p = it.body.position, v = it.body.velocity; const d = Math.hypot(p[0] - it.x, p[1] - it.y, p[2]); maxd = Math.max(maxd, d); if (d > 0.1) moved++; maxv = Math.max(maxv, Math.hypot(v[0], v[1], v[2])); } log(`${label}: moved=${moved}/${items.length} maxd=${maxd.toFixed(2)} maxV=${maxv.toFixed(2)} broken=${broken}/${joints} steps=${world.stepCount}`); };
+  for (let i = 0; i < 30; i++) world.step(); await stats('0.5s');
+  for (let i = 0; i < 90; i++) world.step(); await stats('2s');
+  for (let i = 0; i < 180; i++) world.step(); await stats('5s');
+  if (DV > 0) { const mass = SX * SY * SZ * DENS; for (const it of items) { const p = it.body.position; const d = Math.hypot(p[0], p[1] - 3, p[2] + 1.5); if (d < 3) { const k = 1 - d / 3, v = DV * (0.2 + 0.8 * k * k); it.body.applyImpulse([p[0] / d * v * mass * (it.w / SX), ((p[1] - 3) / d * v + 1.6 * k) * mass * (it.w / SX), (p[2] + 1.5) / d * v * mass * (it.w / SX)]); } } for (let i = 0; i < 180; i++) world.step(); await stats('3s after blast'); }
+  log('DONE');
+} catch (e) { log('ERR ' + e.message + '\n' + e.stack); }
+</script>

@@ -1,0 +1,21 @@
+# raw source downloads and local QA output stay off GitHub
+assets/ph/models/
+assets/previews/
+qa/*.png
+qa/*.jpg
+qa/*.webm
+deploy/
+social/*.mp4
+site/img/*.jpg
+!site/img/og.jpg
+site/img/_sheet*
+node_modules/
+worker/.wrangler/
+.wrangler/
+.gstack/
+*.log
+.env*
+__pycache__/
+assets/ph/hdri/*
+!assets/ph/hdri/rooftop_night_2k.hdr
+!assets/ph/hdri/the_sky_is_on_fire_2k.hdr

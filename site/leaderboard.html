@@ -1,0 +1,128 @@
+<!doctype html>
+<!-- HOOD WARFARE — weekly ladder, read live from the ladder API (worker/). GTA V pause-menu style like index.html.
+     Honest by design: empty state says so; nothing is seeded. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hood Warfare — Weekly leaderboard</title>
+<meta name="description" content="The Hood Warfare weekly ladder. Ranked matches earn points; where you stand on Sunday night sets your tier.">
+<meta property="og:title" content="Hood Warfare — weekly leaderboard">
+<meta property="og:image" content="img/og.jpg">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="img/mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000;--panel:rgba(0,0,0,.78);--ink:#fff;--muted:#b9b9b9;--dim:#7a7a7a;--yellow:#F5B800;--y-hi:#FFE27A;--y-lo:#C97A14;--cash:#5DC75D;--line:rgba(255,255,255,.18);--pad:clamp(18px,5vw,64px);--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:'Roboto Condensed',Arial Narrow,sans-serif;font-size:16px;line-height:1.5;overflow-x:hidden;-webkit-font-smoothing:antialiased;min-height:100svh}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:var(--pad)}
+.disp{font-family:Anton,Impact,'Arial Narrow Bold',sans-serif;font-weight:400;text-transform:uppercase;letter-spacing:.01em;line-height:.95}
+.label{font-size:12px;letter-spacing:.2em;text-transform:uppercase;font-weight:700;color:var(--yellow)}
+.gta{position:relative;display:inline-block;filter:drop-shadow(0 4px 0 #000) drop-shadow(0 0 18px rgba(0,0,0,.6))}
+.gta::before{content:attr(data-text);position:absolute;inset:0;z-index:0;-webkit-text-stroke:.08em #000;color:#000}
+.gta>span{position:relative;z-index:1;background:linear-gradient(180deg,var(--y-hi) 0%,var(--yellow) 48%,var(--y-lo) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+header{position:sticky;top:0;z-index:60;background:linear-gradient(180deg,rgba(0,0,0,.96),rgba(0,0,0,.85));backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.hdr{display:flex;align-items:center;gap:22px;padding:12px var(--pad);max-width:1180px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:12px;white-space:nowrap}
+.brand img{width:34px;height:34px;object-fit:cover;border:2px solid #fff}
+.brand .gta{font-size:24px}
+.tabs{display:flex;gap:4px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:9px 14px;font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:#fff;border-bottom:3px solid transparent;white-space:nowrap}
+.tab:hover,.tab.on{border-bottom-color:#fff}
+.tab.play{background:#fff;color:#000;border:0;margin-left:6px}
+.tab.play:hover{background:var(--yellow)}
+@media(max-width:700px){.hdr{flex-wrap:wrap;gap:8px}.tabs{width:100%;margin-left:0}.tab{padding:8px 10px;font-size:12px}}
+main{padding:clamp(28px,5vw,56px) 0 calc(40px + var(--safe-b))}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;border-bottom:2px solid #fff;padding-bottom:12px;margin-bottom:18px}
+.page-head .disp{font-size:clamp(34px,6vw,64px)}
+.meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+.chip{border:1px solid var(--line);background:var(--panel);padding:8px 12px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.chip b{color:#fff}
+.seg{display:flex;margin-left:auto}
+.seg button{background:var(--panel);border:1px solid var(--line);color:#fff;padding:8px 14px;font:inherit;font-weight:700;font-size:13px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.seg button.on{background:#fff;color:#000}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line)}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.rank{font-family:Anton,Impact,sans-serif;font-size:22px;width:64px}
+td.name{font-weight:700;font-size:17px;max-width:40vw;overflow:hidden;text-overflow:ellipsis}
+td.name small{display:block;font-weight:400;color:var(--dim);font-size:12px;letter-spacing:.06em}
+td.pts{font-family:Anton,Impact,sans-serif;font-size:22px;color:var(--cash);text-shadow:0 2px 0 #000}
+.stars{color:#fff;letter-spacing:.04em;text-shadow:0 2px 0 #000}
+.stars .off{color:rgba(255,255,255,.22)}
+tr.Diamond td.rank{color:var(--yellow)}
+tr.me td{background:rgba(245,184,0,.1)}
+.empty{padding:clamp(28px,5vw,48px);text-align:center;background:var(--panel);border:1px solid var(--line)}
+.empty .disp{font-size:clamp(28px,5vw,44px);margin-bottom:8px}
+.empty p{color:var(--muted);max-width:52ch;margin:0 auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-width:170px;padding:14px 26px;background:#fff;color:#000;font-weight:700;font-size:15px;letter-spacing:.16em;text-transform:uppercase;border:2px solid #fff;margin-top:18px}
+.btn:hover{background:var(--yellow);border-color:var(--yellow)}
+.legend{display:grid;gap:8px;grid-template-columns:1fr;margin-top:18px}
+.legend .cell{background:var(--panel);border:1px solid var(--line);padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.legend .cell b{font-family:Anton,Impact,sans-serif;font-size:20px;letter-spacing:.02em}
+.legend .cell span{color:var(--muted);font-size:13px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+.legend .cell em{font-style:normal;font-family:Anton,Impact,sans-serif;color:var(--cash);font-size:20px;text-shadow:0 2px 0 #000}
+.note{margin-top:18px;color:var(--dim);font-size:14px;max-width:80ch;border-left:3px solid var(--yellow);padding-left:12px}
+@media(min-width:820px){.legend{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:560px){.hide-s{display:none}td,th{padding:9px 8px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hdr">
+    <a class="brand" href="index.html"><img src="img/mark.webp" alt=""><span class="gta disp" data-text="Hood Warfare"><span>Hood Warfare</span></span></a>
+    <nav class="tabs">
+      <a class="tab" href="index.html#rewards">Rewards</a>
+      <a class="tab" href="index.html#funding">Funding</a>
+      <a class="tab" href="index.html#game">Game</a>
+      <a class="tab on" href="leaderboard.html">Leaderboard</a>
+      <a class="tab play" href="../index.html">Play</a>
+    </nav>
+  </div>
+</header>
+<main>
+  <div class="wrap">
+    <div class="page-head"><h1 class="disp">Weekly ladder</h1><div class="label" id="weekLabel">Loading…</div></div>
+    <div class="meta">
+      <div class="chip">Closes <b id="closes">—</b></div>
+      <div class="chip">Players <b id="players">—</b></div>
+      <div class="chip">Points <b>10 per kill · 50 per win</b></div>
+      <div class="seg"><button class="on" data-week="current">This week</button><button data-week="all">All time</button></div>
+    </div>
+    <div id="board"></div>
+    <div class="legend" id="legend"></div>
+    <p class="note">Season 1 tiers are the plan for when the pool is funded. The ladder itself is live now: every match you finish with a gamertag set counts. Set your gamertag and, if you want to be paid, your Solana wallet on the game's title screen.</p>
+  </div>
+</main>
+<script>
+const API = new URLSearchParams(location.search).get('api') || 'https://hood-warfare-api.eugenelau9696.workers.dev';
+const $ = (s) => document.querySelector(s);
+const stars = (n) => '★'.repeat(n) + '<span class="off">' + '★'.repeat(5 - n) + '</span>';
+let me = null; try { me = JSON.parse(localStorage.getItem('hw.id') || 'null'); } catch {}
+const until = (ms) => { const d = ms - Date.now(); if (d <= 0) return 'now'; const h = Math.floor(d / 36e5), dd = Math.floor(h / 24); return dd ? `${dd}d ${h % 24}h` : `${h}h ${Math.floor(d / 6e4) % 60}m`; };
+async function load(week) {
+  $('#board').innerHTML = '<div class="empty"><div class="disp">Loading</div></div>';
+  let data; try { const r = await fetch(`${API}/api/ladder?week=${week}&limit=1000`, { signal: AbortSignal.timeout(9000) }); data = await r.json(); if (!data.ok) throw new Error(data.error || 'bad response'); }
+  catch (e) { $('#board').innerHTML = `<div class="empty"><div class="disp">Ladder offline</div><p>Could not reach the ladder server (${e.message}). The game still runs; results post when it is back.</p></div>`; return; }
+  $('#weekLabel').textContent = week === 'all' ? 'All time' : `Week ${data.week} · Mon → Sun 23:59 UTC`;
+  $('#closes').textContent = data.closes ? `Sunday · in ${until(data.closes)}` : '—';
+  $('#players').textContent = data.rows.length;
+  $('#legend').innerHTML = data.tiers.map((t) => `<div class="cell"><div><b>${t.name}</b><br><span>Ranks ${t.from}–${t.to}</span></div><em>${t.usdc} USDC</em></div>`).join('');
+  if (!data.rows.length) { $('#board').innerHTML = `<div class="empty"><div class="disp">Nobody on the block yet</div><p>No ranked matches have been logged ${week === 'all' ? 'yet' : 'this week'}. Set a gamertag on the title screen, finish a match, and you are on this list.</p><a class="btn" href="../index.html">Play now</a></div>`; return; }
+  const myName = me && me.name ? me.name.toLowerCase() : null;
+  $('#board').innerHTML = `<table><thead><tr><th>#</th><th>Player</th><th class="hide-s">Tier</th><th class="num">Pts</th><th class="num hide-s">K</th><th class="num hide-s">D</th><th class="num">W</th><th class="num hide-s">Matches</th></tr></thead><tbody>` +
+    data.rows.map((r) => { const t = data.tiers.find((x) => x.name === r.tier); return `<tr class="${r.tier || ''}${myName && r.name.toLowerCase() === myName ? ' me' : ''}"><td class="rank">${r.rank}</td><td class="name">${esc(r.name)}${r.wallet ? `<small>${r.wallet}</small>` : ''}</td><td class="hide-s">${t ? `<span class="stars">${stars(t.stars)}</span> ${t.name}` : '—'}</td><td class="num pts">${r.points}</td><td class="num hide-s">${r.kills}</td><td class="num hide-s">${r.deaths}</td><td class="num">${r.wins}</td><td class="num hide-s">${r.matches}</td></tr>`; }).join('') + '</tbody></table>';
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => { document.querySelectorAll('.seg button').forEach((x) => x.classList.toggle('on', x === b)); load(b.dataset.week); }));
+load('current'); setInterval(() => { const on = document.querySelector('.seg button.on'); load(on ? on.dataset.week : 'current'); }, 30000);
+</script>
+</body>
+</html>

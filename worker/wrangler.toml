@@ -1,0 +1,11 @@
+name = "hood-warfare-api"
+main = "src/index.js"
+compatibility_date = "2026-07-15"   # newest date wrangler 4.110 runs locally
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hood-warfare"
+database_id = "18f58e4a-dc18-467b-b048-1fa303e2c981"
+
+[vars]
+ALLOWED_ORIGIN = "*"
