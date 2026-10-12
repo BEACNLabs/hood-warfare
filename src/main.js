@@ -9,7 +9,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { manager, loadHDR, loadGLB, setAniso } from './assets.js';
 import { buildWorld, lamps, windowsLit, resolve, MAP } from './world.js';
 import { Player } from './player.js';
-import { FX, Weapon } from './weapon.js';
+import { FX, Weapon, GUN_SPECS } from './weapon.js';
 import { Bot, buildNav, rayVsBots, freeCellNear } from './bots.js';
 import { loadCharacters } from './characters.js';
 import { Launcher } from './rocket.js';
@@ -112,6 +112,10 @@ setTimeout(resize, 0);
 const player = new Player(camera);
 const fx = new FX(scene);
 const weapon = new Weapon(scene, camera, player, fx);
+// the arsenal: AK (also the bots' third-person gun), MAC-10, MP5, M700 sniper, plus the RPG-7 launcher
+const guns = { ak: weapon, mac10: new Weapon(scene, camera, player, fx, GUN_SPECS.mac10), mp5: new Weapon(scene, camera, player, fx, GUN_SPECS.mp5), m700: new Weapon(scene, camera, player, fx, GUN_SPECS.m700) };
+const ORDER = ['ak', 'mac10', 'mp5', 'm700', 'rpg'];
+const curGun = () => guns[arsenal.cur] || null;
 const launcher = new Launcher(scene, camera, player, fx);
 const arsenal = { cur: 'ak', switchT: 0 };
 const bots = []; let trooper = null;
@@ -167,9 +171,9 @@ function startMatch() {
   for (const b of bots) ctx.remove(b); bots.length = 0;
   for (let i = 0; i < 5; i++) bots.push(new Bot(ctx, trooper, 'blue', spawnPoint('blue')));
   for (let i = 0; i < 6; i++) bots.push(new Bot(ctx, trooper, 'red', spawnPoint('red')));
-  player.respawn(spawnPoint('blue')); weapon.mag = 30; weapon.reserve = 180; launcher.loaded = 1; launcher.reserve = 3; arsenal.cur = 'ak'; weapon.holstered = false; player.kills = 0; player.deaths = 0;
+  player.respawn(spawnPoint('blue')); for (const k in guns) { const g = guns[k]; g.mag = g.magSize; g.reserve = g.spec.reserve; g.holstered = k !== 'ak'; g.reloading = 0; } launcher.loaded = 1; launcher.reserve = 3; arsenal.cur = 'ak'; player.kills = 0; player.deaths = 0;
   hud.score(0, 0); $('ov').classList.add('off'); $('lmsg').textContent = ''; $('lboard').classList.remove('on'); requestLock(); unlockAudio();
-  setTimeout(() => { if (MATCH.started && !MATCH.over) hud.callout(Q.mobile ? 'TAP SWAP TO ARM THE RPG-7' : 'PRESS 2 TO ARM THE RPG-7', Q.mobile ? 'SWAP AGAIN FOR THE AK-47' : '1 = AK-47 · Q SWAPS'); }, 1800);
+  setTimeout(() => { if (MATCH.started && !MATCH.over) hud.callout(Q.mobile ? 'TAP SWAP TO CYCLE GUNS' : 'PRESS 2 TO ARM THE RPG-7', Q.mobile ? 'MAC-10 · MP5 · M700 · RPG-7' : '3 MAC-10 · 7 MP5 · 8 SNIPER · Q CYCLES'); }, 1800);
 }
 
 // ---------- loading ----------
@@ -226,11 +230,13 @@ async function boot() {
   // brick dust thrown off a broken wall (photographic puffs, tinted brick-brown, lit low for the night scene)
   destruction.onBlast = (p, n) => { for (let i = 0; i < Math.min(12, 4 + (n >> 3)); i++) fx.billow('puff', p.clone().add(new THREE.Vector3((Math.random() - 0.5) * 3, Math.random() * 1.5, (Math.random() - 0.5) * 3)), new THREE.Vector3((Math.random() - 0.5) * 4, 0.4 + Math.random() * 1.6, (Math.random() - 0.5) * 4), 2.2 + Math.random() * 1.6, 0.9, 4 + Math.random() * 2, { op: 0.75, tint: [0.085, 0.05, 0.035], drag: 1.8, rise: 0.15 }); };
   pmsg.textContent = 'Loading the AK…';
-  await weapon.load(); await launcher.load();
+  await Promise.all(Object.values(guns).map((g) => g.load())); await launcher.load();
   pmsg.textContent = 'Calling the homies…';
   await loadCharacters(weapon.template3p);
-  weapon.rayTargets = (o, d, maxT) => rayVsBots(o, d, maxT, bots.filter((b) => b.team === 'red' || b.kind === 'bomber'));
-  weapon.onHit = (bot, dmg, point, dir) => { hud.hit(false); sfx.hit(); if (bot.damage(dmg, player, time, point, dir)) onDeath(bot, player); };
+  for (const g of Object.values(guns)) {
+    g.rayTargets = (o, d, maxT) => rayVsBots(o, d, maxT, bots.filter((b) => b.team === 'red' || b.kind === 'bomber'));
+    g.onHit = (bot, dmg, point, dir) => { hud.hit(false); sfx.hit(); if (bot.damage(dmg, player, time, point, dir)) onDeath(bot, player); };
+  }
   launcher.rayTargets = (o, d, maxT, owner) => rayVsBots(o, d, maxT, bots.filter((b) => b !== owner && (owner !== player || b.team === 'red' || b.kind === 'bomber')));
   launcher.onExplode = (p, owner, t) => {
     for (const v of [player, ...bots]) {
@@ -279,16 +285,23 @@ function loop(now) {
     if (input.ab) { useAbility(input.ab); input.ab = 0; }
     player.update(dt, MATCH.over ? { moveX: 0, moveY: 0 } : input, look, time);
     if (player.stepped && !player.dead) sfx.step();
-    if (input.swap && !player.dead) { const want = input.swap === 'toggle' ? (arsenal.cur === 'ak' ? 'rpg' : 'ak') : input.swap; if (want !== arsenal.cur) { arsenal.cur = want; weapon.holstered = want !== 'ak'; hud.callout(want === 'rpg' ? 'RPG-7' : 'AK-47', want === 'rpg' ? `${launcher.loaded + launcher.reserve} ROCKETS` : ''); } }
+    if (input.swap && !player.dead) {
+      const i0 = ORDER.indexOf(arsenal.cur); const want = input.swap === 'next' || input.swap === 'toggle' ? ORDER[(i0 + 1) % ORDER.length] : input.swap === 'prev' ? ORDER[(i0 + ORDER.length - 1) % ORDER.length] : input.swap;
+      if (ORDER.includes(want) && want !== arsenal.cur) {
+        arsenal.cur = want; for (const k in guns) guns[k].holstered = k !== want;
+        const g = guns[want]; hud.callout(want === 'rpg' ? 'RPG-7' : g.name, want === 'rpg' ? `${launcher.loaded + launcher.reserve} ROCKETS` : `${g.mag + g.reserve} ROUNDS`);
+      }
+    }
     input.swap = '';
-    const akIn = arsenal.cur === 'ak' ? (MATCH.over ? { fire: false } : input) : { fire: false, ads: false, reload: false };
-    weapon.update(dt, akIn, look, time);
+    const idle = { fire: false, ads: false, reload: false }, live = MATCH.over ? { fire: false } : input;
+    for (const k in guns) { const g = guns[k]; g.baseFov = weapon.baseFov; g.portrait = weapon.portrait; g.fovOwner = arsenal.cur === k || (arsenal.cur === 'rpg' && k === 'ak'); g.update(dt, arsenal.cur === k ? live : idle, look, time); }
+    { const g = guns.m700, on = arsenal.cur === 'm700' && g.ads > 0.85; document.getElementById('scope').classList.toggle('on', on); document.getElementById('xh').style.visibility = on ? 'hidden' : ''; }
     launcher.portrait = weapon.portrait; launcher.update(dt, MATCH.over ? { fire: false } : input, look, time, arsenal.cur === 'rpg');
     for (const b of bots) {
       if (b.dead && b.respawnAt && time > b.respawnAt && !b.expires && !MATCH.over) b.respawn(spawnPoint(b.team));
       b.update(dt, time);
     }
-    if (player.dead && time > respawnAt && !MATCH.over) { player.respawn(spawnPoint('blue')); weapon.mag = 30; launcher.loaded = 1; launcher.reserve = 3; hud.hurt(0); }
+    if (player.dead && time > respawnAt && !MATCH.over) { player.respawn(spawnPoint('blue')); for (const g of Object.values(guns)) g.mag = g.magSize; launcher.loaded = 1; launcher.reserve = 3; hud.hurt(0); }
   }
   fx.update(dt); updateDestruction(dt);
   if (fx.shake > 0.001) { const a = fx.shake * fx.shake; camera.position.x += (Math.random() - 0.5) * 0.16 * a; camera.position.y += (Math.random() - 0.5) * 0.12 * a; camera.rotation.z += (Math.random() - 0.5) * 0.03 * a; }
@@ -299,7 +312,7 @@ function loop(now) {
   if (MATCH.started && !MATCH.over && time > nextDistant) { sfx.distantGunfire(); nextDistant = time + 18 + Math.random() * 30; }
   // HUD
   if (MATCH.started) {
-    if (arsenal.cur === 'rpg') hud.ammo(launcher.loaded, launcher.reserve, player.kills, 'RPG-7'); else hud.ammo(weapon.mag, weapon.reserve, player.kills, 'AK-47');
+    if (arsenal.cur === 'rpg') hud.ammo(launcher.loaded, launcher.reserve, player.kills, 'RPG-7'); else { const g = curGun(); hud.ammo(g.mag, g.reserve, player.kills, g.name); }
     const snitch = time < snitchUntil; for (const n in ab) hud.ability(n, ab[n].have / ab[n].need, ab[n].have >= ab[n].need);
     labelItems.length = 0; dots.length = 0;
     for (const b of bots) {
@@ -316,4 +329,4 @@ function loop(now) {
 }
 boot().catch((e) => { console.error(e); pmsg.textContent = 'Could not start: ' + e.message; });
 // expose for QA
-window.__hw = { scene, camera, player, bots, weapon, launcher, arsenal, destruction, score, MATCH, startMatch, useAbility, Q, renderer, input, THREE, fx };
+window.__hw = { scene, camera, player, bots, weapon, guns, launcher, arsenal, destruction, score, MATCH, startMatch, useAbility, Q, renderer, input, THREE, fx };

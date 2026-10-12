@@ -125,3 +125,11 @@ Pause-menu look: black panels, white condensed tabs, yellow-gradient wordmark wi
 - Rocket trail and backblast, wall-break brick dust and bullet impacts use the same photographic puffs (Kenney Smoke Particles, CC0, `assets/fx/`).
 - Trap: sprite colours are linear, so a 0.3 grey renders light grey at night; smoke and dust tints sit at 0.03–0.09. Flipping `toneMapped` on a live material needs `needsUpdate = true`.
 - Demo recorder `qa/demo.mjs` now plays a live match (bots on), drives movement through real key events and taps the WebAudio mix into the video.
+
+## v0.8.0 — more weapons
+
+- MAC-10, MP5 and M700 bolt-action sniper from the same CC0 pack as the AK (`tools/optimize.py -- mac10 mp5 m700`).
+- One `Weapon` class driven by `GUN_SPECS` in `src/weapon.js` (rpm, auto/semi, damage body/head, spread, bloom, recoil, reload, hip/aim offsets, aim zoom, sound pitch). Aim height is derived from each model's bounding box so the sights sit just under the crosshair.
+- M700: 5 rounds, 110/250 damage, scope overlay at 0.25x fov, bolt sound after each shot. Semi-auto needs a fresh trigger pull.
+- Keys 1 AK, 2 RPG, 3 MAC-10, 7 MP5, 8 M700 (4-6 stay abilities); Q and mouse wheel cycle; SWAP cycles on touch.
+- QA: `node qa/guns.mjs` fires every gun on desktop and phone; `qa/gunside.mjs` shows the rigs side-on in the world.

@@ -136,9 +136,12 @@ def do_ph(slug, budget, join):
     size = os.path.getsize(os.path.join(OUT, slug + ".glb"))
     print(f"[ok] {slug}: tris {before}->{after}, nodes {len(objs)}, {size/1e6:.2f} MB", flush=True)
 
-def do_ak():
+GUNS = {"ak47": "AK47", "mac10": "Mac10", "mp5": "MP5", "m700": "M700"}  # slug -> folder/prefix in the CC0 pack
+
+def do_ak(slug="ak47"):
     reset()
-    fbx = r"C:\Users\User\Desktop\Claude code projects\_dl\weapons\pack\WeaponsPack\AK47\SKM_AK47.fbx"
+    key = GUNS[slug]
+    fbx = os.path.join(r"C:\Users\User\Desktop\Claude code projects\_dl\weapons\pack\WeaponsPack", key, f"SKM_{key}.fbx")
     try:
         bpy.ops.import_scene.fbx(filepath=fbx)
     except Exception:
@@ -162,27 +165,27 @@ def do_ak():
                 n = nt.nodes.new('ShaderNodeTexImage')
                 n.image = img
                 return n
-            c = tex("T_AK47_C.png", 'sRGB')
+            c = tex(f"T_{key}_C.png", 'sRGB')
             nt.links.new(c.outputs[0], bsdf.inputs['Base Color'])
-            nrm = tex("T_AK47_N.png", 'Non-Color')
+            nrm = tex(f"T_{key}_N.png", 'Non-Color')
             nm = nt.nodes.new('ShaderNodeNormalMap')
             nt.links.new(nrm.outputs[0], nm.inputs['Color'])
             nt.links.new(nm.outputs[0], bsdf.inputs['Normal'])
-            rm = tex("T_AK47_RMAO.png", 'Non-Color')
+            rm = tex(f"T_{key}_RMAO.png", 'Non-Color')
             sep = nt.nodes.new('ShaderNodeSeparateColor')
             nt.links.new(rm.outputs[0], sep.inputs[0])
             nt.links.new(sep.outputs[0], bsdf.inputs['Roughness'])
             nt.links.new(sep.outputs[1], bsdf.inputs['Metallic'])
     print("AK bounds", bounds(objs), flush=True)
-    export("ak47", anims=True, apply=False)
-    render("ak47")
-    print(f"[ok] ak47 {os.path.getsize(os.path.join(OUT, 'ak47.glb'))/1e6:.2f} MB", flush=True)
+    export(slug, anims=True, apply=False)
+    render(slug)
+    print(f"[ok] {slug} {os.path.getsize(os.path.join(OUT, slug + '.glb'))/1e6:.2f} MB", flush=True)
 
-jobs = ONLY or (["ak47"] + list(TABLE.keys()))
+jobs = ONLY or (list(GUNS.keys()) + list(TABLE.keys()))
 for j in jobs:
     try:
-        if j == "ak47":
-            do_ak()
+        if j in GUNS:
+            do_ak(j)
         else:
             do_ph(j, *TABLE[j])
     except Exception:

@@ -14,7 +14,7 @@
   <img alt="Physics" src="https://img.shields.io/badge/physics-three--avbd%20(WebGPU)-7b5cff">
   <img alt="Ladder API" src="https://img.shields.io/badge/ladder-Cloudflare%20Workers%20%2B%20D1-f38020?logo=cloudflare&logoColor=white">
   <img alt="Build" src="https://img.shields.io/badge/build%20step-none-2ea44f">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.7.0-blue">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.8.0-blue">
 </p>
 
 <p align="center">
@@ -35,6 +35,16 @@ AK-47 and an RPG-7. Kills charge three abilities:
 | **6** | Bomber | Sends a runner at the nearest opp |
 
 First team to 100 points, or the most when the ten minutes are up.
+
+| Key | Weapon | Feel |
+|:---:|---|---|
+| **1** | AK-47 | 620 rpm, the all-rounder |
+| **2** | RPG-7 | Rockets that open houses |
+| **3** | MAC-10 | 1,090 rpm, close and loud |
+| **7** | MP5 | 800 rpm, accurate on the move |
+| **8** | M700 | Bolt-action sniper with a scope, one shot to the body |
+
+`Q` or the mouse wheel cycles weapons; on a phone, SWAP cycles them.
 
 <table>
   <tr>
@@ -103,7 +113,7 @@ The bundled server queues 512 connections because the game loads around 150 file
 |---|---|
 | Move / sprint / jump / crouch | `WASD` · `Shift` · `Space` · `C` |
 | Fire / aim / reload | left click · right click · `R` |
-| Weapons | **`2` arms the RPG-7** · `1` AK-47 · `Q` swaps |
+| Weapons | `1` AK-47 · **`2` RPG-7** · `3` MAC-10 · `7` MP5 · `8` M700 · `Q` / wheel cycles |
 | Abilities / mute | `4` `5` `6` · `M` |
 
 Useful URL flags: `?sky=the_sky_is_on_fire`, `?phys=0` (no GPU physics), `?nohud=1`, `?mobile=1`, `?api=<ladder url>`.

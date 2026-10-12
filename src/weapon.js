@@ -162,20 +162,30 @@ export class FX {
   }
 }
 
+// Gun specs. All four meshes come from the CC0 Classic Weapons Pack (stein-indie).
+// len = viewmodel length in metres; dmg = [body, head]; spread/bloom in radians; adsFov = fov multiplier when aiming.
+export const GUN_SPECS = {
+  ak:    { id: 'ak',    name: 'AK-47',  glb: 'ak47',  len: 0.86, mag: 30, reserve: 180, rpm: 620,  auto: true,  dmg: [24, 40],  spread: 0.004, bloom: 0.0022, adsTight: 0.6,  kick: 0.011, kickZ: 0.045, reload: 2.3, hip: [0.15, -0.2, -0.3],  ads: [0, -0.108, -0.24], adsFov: 0.66, snd: { rate: 1, vol: 0.85 },    flash: 0.5 },
+  mac10: { id: 'mac10', name: 'MAC-10', glb: 'mac10', len: 0.36, mag: 32, reserve: 192, rpm: 1090, auto: true,  dmg: [15, 28],  spread: 0.009, bloom: 0.0026, adsTight: 0.45, kick: 0.008, kickZ: 0.03,  reload: 1.8, hip: [0.16, -0.19, -0.44], ads: [0, -0.09, -0.3],   adsFov: 0.8,  snd: { rate: 1.35, vol: 0.62 }, flash: 0.34 },
+  mp5:   { id: 'mp5',   name: 'MP5',    glb: 'mp5',   len: 0.66, mag: 30, reserve: 180, rpm: 800,  auto: true,  dmg: [20, 36],  spread: 0.003, bloom: 0.0015, adsTight: 0.7,  kick: 0.0075, kickZ: 0.032, reload: 2.1, hip: [0.14, -0.19, -0.3], ads: [0, -0.1, -0.24],   adsFov: 0.7,  snd: { rate: 1.18, vol: 0.7 },  flash: 0.4 },
+  m700:  { id: 'm700',  name: 'M700',   glb: 'm700',  len: 1.02, mag: 5,  reserve: 30,  rpm: 52,   auto: false, dmg: [110, 250], spread: 0.03, bloom: 0,     adsTight: 0.97, kick: 0.05,  kickZ: 0.09,  reload: 3.0, hip: [0.16, -0.21, -0.34], ads: [0, -0.1, -0.26],   adsFov: 0.25, snd: { rate: 0.78, vol: 1 },    flash: 0.6, scope: true },
+};
+
 export class Weapon {
-  constructor(scene, camera, player, fx) {
-    this.scene = scene; this.camera = camera; this.player = player; this.fx = fx;
+  constructor(scene, camera, player, fx, spec = GUN_SPECS.ak) {
+    this.scene = scene; this.camera = camera; this.player = player; this.fx = fx; this.spec = spec; this.name = spec.name;
     this.rig = new THREE.Group(); camera.add(this.rig);
-    this.mag = 30, this.magSize = 30; this.reserve = 180; this.rpm = 620; this.cool = 0; this.reloading = 0; this.ads = 0; this.sway = new THREE.Vector2(); this.kickZ = 0; this.loaded = false;
-    this.hipPos = new THREE.Vector3(0.15, -0.2, -0.3); this.adsPos = new THREE.Vector3(0, -0.108, -0.22); this.shots = 0; this.muzzle = new THREE.Object3D();
+    this.mag = spec.mag, this.magSize = spec.mag; this.reserve = spec.reserve; this.rpm = spec.rpm; this.cool = 0; this.reloading = 0; this.ads = 0; this.sway = new THREE.Vector2(); this.kickZ = 0; this.loaded = false;
+    this.hipPos = new THREE.Vector3(...spec.hip); this.adsPos = new THREE.Vector3(...spec.ads); this.shots = 0; this.muzzle = new THREE.Object3D();
+    this.holstered = spec.id !== 'ak'; this.holster = this.holstered ? 1 : 0; this.fovOwner = spec.id === 'ak'; this.trigger = false;
     this.onHit = null; this.rayTargets = null; this.lastFire = 0; this.baseFov = 72; this.portrait = false;
   }
   async load() {
-    const g = await loadGLB('assets/models/ak47.glb'); const vm = prep(g.scene, { cast: false, receive: false, env: 1.3 });
+    const g = await loadGLB(`assets/models/${this.spec.glb}.glb`); const vm = prep(g.scene, { cast: false, receive: false, env: 1.3 });
     vm.traverse((o) => { if (!o.isMesh) return; const mats = Array.isArray(o.material) ? o.material : [o.material]; for (const m of mats) { m.transparent = false; m.alphaTest = 0; m.opacity = 1; m.depthWrite = true; m.side = THREE.FrontSide; m.needsUpdate = true; } });
     const bb = new THREE.Box3().setFromObject(vm); const size = bb.getSize(new THREE.Vector3());
     const axis = size.x > size.y && size.x > size.z ? 'x' : size.z > size.y ? 'z' : 'y';
-    const len = size[axis]; const sc = 0.86 / len;
+    const len = size[axis]; const sc = this.spec.len / len;
     const inner = new THREE.Group(); inner.add(vm); inner.scale.setScalar(sc);
     // rotate the long axis onto -Z; the far end (+extent) becomes the muzzle after the flip below
     if (axis === 'x') inner.rotation.y = Math.PI / 2; else if (axis === 'y') inner.rotation.x = Math.PI / 2;
@@ -188,6 +198,9 @@ export class Weapon {
     const far = bb.max[axis] - c[axis], near = c[axis] - bb.min[axis];
     this.muzzleLocal = new THREE.Vector3(0, 0.035, -Math.max(far, near) * sc - 0.02);
     inner.position.set(0, 0, 0.12);
+    // aim height from the model itself: put the top of the gun just under the eye line so aiming looks over the sights
+    this.rig.remove(inner); inner.updateMatrixWorld(true); const ib = new THREE.Box3().setFromObject(inner); this.rig.add(inner);
+    this.adsPos.set(0, -ib.max.y - (this.spec.adsDrop ?? 0.012), this.adsPos.z);
     vm.traverse((o) => { if (o.isMesh) { o.frustumCulled = false; o.renderOrder = 5; } });
   }
   flip() { this.vmInner.rotation.y += Math.PI; }
@@ -196,11 +209,12 @@ export class Weapon {
     // ADS blend
     const wantAds = input.ads && !p.dead && this.reloading <= 0; this.ads += ((wantAds ? 1 : 0) - this.ads) * Math.min(1, dt * 10);
     // reload
-    if (input.reload && this.reloading <= 0 && this.mag < this.magSize && this.reserve > 0 && !p.dead) { this.reloading = 2.3; sfx.reload(); }
+    if (input.reload && this.reloading <= 0 && this.mag < this.magSize && this.reserve > 0 && !p.dead) { this.reloading = this.spec.reload; sfx.reload(); }
     input.reload = false;
     if (this.reloading > 0) { this.reloading -= dt; if (this.reloading <= 0) { const need = this.magSize - this.mag, take = Math.min(need, this.reserve); this.mag += take; this.reserve -= take; } }
     // fire
-    if (input.fire && !p.dead && this.reloading <= 0 && this.cool <= 0) {
+    const pull = input.fire && (this.spec.auto || !this.trigger); this.trigger = !!input.fire;
+    if (pull && !p.dead && this.reloading <= 0 && this.cool <= 0) {
       if (this.mag > 0) { this.fire(time); this.cool = 60 / this.rpm; }
       else { this.cool = 0.25; sfx.dry(); if (this.reserve > 0) input.reload = true; }
     }
@@ -210,17 +224,17 @@ export class Weapon {
     this.sway.x += (sx - this.sway.x) * Math.min(1, dt * 10); this.sway.y += (sy - this.sway.y) * Math.min(1, dt * 10);
     this.kickZ *= Math.exp(-dt * 12);
     const bobX = Math.sin(p.bob) * 0.012 * p.bobAmp * (1 - this.ads * 0.8), bobY = Math.abs(Math.cos(p.bob)) * 0.012 * p.bobAmp * (1 - this.ads * 0.8);
-    this.holster = (this.holster ?? 0) + ((this.holstered ? 1 : 0) - (this.holster ?? 0)) * Math.min(1, dt * 9); this.rig.visible = this.holster < 0.98;
+    this.holster = (this.holster ?? 0) + ((this.holstered ? 1 : 0) - (this.holster ?? 0)) * Math.min(1, dt * 9); this.rig.visible = this.holster < 0.98 && !(this.spec.scope && this.ads > 0.85);
     const pos = this.hipPos.clone().lerp(this.adsPos, this.ads); if (this.portrait) { pos.x *= 0.5; pos.y -= 0.02; } pos.y -= this.holster * 0.4;
     this.rig.position.set(pos.x - this.sway.x + bobX, pos.y - this.sway.y * 0.6 + bobY - (this.reloading > 0 ? 0.18 : 0) - (p.sprinting ? 0.06 : 0), pos.z + this.kickZ);
     const rz = this.reloading > 0 ? 0.6 : 0, rx = p.sprinting ? -0.35 : 0;
     this.rig.rotation.set(this.sway.y * 0.8 + rx + this.kickZ * 2, -this.sway.x * 1.2 + (p.sprinting ? 0.35 : 0), rz + this.sway.x * 0.5);
-    this.camera.fov += ((this.ads > 0.5 ? this.baseFov * 0.66 : this.baseFov) - this.camera.fov) * Math.min(1, dt * 10); this.camera.updateProjectionMatrix();
+    if (this.fovOwner) { this.camera.fov += ((this.ads > 0.5 ? this.baseFov * this.spec.adsFov : this.baseFov) - this.camera.fov) * Math.min(1, dt * (this.spec.scope ? 14 : 10)); this.camera.updateProjectionMatrix(); }
   }
   muzzleWorld(out) { return out.copy(this.muzzleLocal).applyMatrix4(this.vmInner.matrixWorld.clone().multiply(new THREE.Matrix4().makeRotationY(0))); }
   fire(time) {
     const p = this.player; this.mag--; this.shots++; this.lastFire = time;
-    const spread = (0.004 + Math.min(this.shots, 8) * 0.0022 + p.planar * 0.0012) * (1 - this.ads * 0.6);
+    const S = this.spec; const spread = (S.spread + Math.min(this.shots, 8) * S.bloom + p.planar * 0.0012) * (1 - this.ads * S.adsTight);
     const dir = this.camera.getWorldDirection(new THREE.Vector3());
     const right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize(), up = new THREE.Vector3().crossVectors(right, dir);
     dir.addScaledVector(right, (Math.random() - 0.5) * 2 * spread).addScaledVector(up, (Math.random() - 0.5) * 2 * spread).normalize();
@@ -230,10 +244,11 @@ export class Weapon {
     let bot = this.rayTargets ? this.rayTargets(origin, dir, t) : null;
     const end = origin.clone().addScaledVector(dir, bot ? bot.t : t);
     const m = new THREE.Vector3(); this.vmInner.updateWorldMatrix(true, false); m.copy(this.muzzleLocal).applyMatrix4(this.vmInner.matrixWorld);
-    this.fx.flash(m, 0.5); this.fx.tracer(m.clone().addScaledVector(dir, 0.6), end);
-    if (bot) { this.fx.blood(end, dir); this.onHit?.(bot.bot, bot.head ? 40 : 24, end, dir); }
+    this.fx.flash(m, S.flash); this.fx.tracer(m.clone().addScaledVector(dir, 0.6), end);
+    if (bot) { this.fx.blood(end, dir); this.onHit?.(bot.bot, bot.head ? S.dmg[1] : S.dmg[0], end, dir); }
     else if (hitW.t < 1) { this.fx.impact(end, hitW.n); sfx.impactAt(end); }
-    p.kick += 0.011 * (1 - this.ads * 0.4); p.kickYaw += (Math.random() - 0.5) * 0.006; this.kickZ += 0.045;
-    sfx.shot();
+    p.kick += S.kick * (1 - this.ads * 0.4); p.kickYaw += (Math.random() - 0.5) * 0.006 * (S.kick / 0.011); this.kickZ += S.kickZ;
+    sfx.shot(S.snd);
+    if (S.scope && this.mag > 0) setTimeout(() => sfx.reload?.({ rate: 1.7, vol: 0.35 }), 420);
   }
 }

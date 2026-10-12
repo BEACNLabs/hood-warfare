@@ -83,7 +83,7 @@ function tone(f0, f1, dur, { type = 'sine', gain = 0.5, delay = 0 } = {}) {
 // ---------- the game-facing API ----------
 export const sfx = {
   // the player's own AK: full-range sample, no panning
-  shot() { if (!ctx) return; if (!play('shot', { vol: 0.85, jitter: 0.04 })) { noise(0.18, { f: 900, q: 0.5, gain: 1.1, decay: 0.16 }); noise(0.4, { f: 180, q: 0.8, type: 'lowpass', gain: 0.9, decay: 0.35 }); tone(160, 40, 0.12, { gain: 0.7 }); } },
+  shot({ rate = 1, vol = 0.85 } = {}) { if (!ctx) return; if (!play('shot', { vol, rate, jitter: 0.04 })) { noise(0.18, { f: 900, q: 0.5, gain: 1.1, decay: 0.16 }); noise(0.4, { f: 180, q: 0.8, type: 'lowpass', gain: 0.9, decay: 0.35 }); tone(160, 40, 0.12, { gain: 0.7 }); } },
   // someone else's AK somewhere in the world: near = the close sample, far = the distant burst sample
   shotAt(pos) {
     if (!ctx) return; const { dist } = spatial(pos);
@@ -98,7 +98,7 @@ export const sfx = {
   hurt() { if (!ctx) return; if (!play('hurt', { vol: 0.75, jitter: 0.08 })) { noise(0.25, { f: 400, q: 0.6, type: 'lowpass', gain: 0.6, decay: 0.22 }); tone(120, 60, 0.3, { gain: 0.3 }); } },
   death() { if (!ctx) return; play('death', { vol: 0.8, jitter: 0.03 }); },
   deathAt(pos) { if (!ctx) return; playAt('death', pos, { vol: 0.6, ref: 4, max: 45 }); },
-  reload() { if (!ctx) return; if (!play('reload', { vol: 0.7, jitter: 0 })) { tone(700, 300, 0.05, { type: 'square', gain: 0.1 }); noise(0.08, { f: 3000, gain: 0.3, decay: 0.07, delay: 1.5 }); } },
+  reload({ rate = 1, vol } = {}) { if (!ctx) return; if (!play('reload', { vol: vol ?? 0.7, rate, jitter: 0 })) { tone(700, 300, 0.05, { type: 'square', gain: 0.1 }); noise(0.08, { f: 3000, gain: 0.3, decay: 0.07, delay: 1.5 }); } },
   ability() { if (!ctx) return; if (!play('ability', { vol: 0.75, jitter: 0 })) tone(660, 1320, 0.3, { type: 'sine', gain: 0.18 }); },
   ding() { this.ability(); },
   snitch() { if (!ctx) return; play('snitch', { vol: 0.7, jitter: 0 }); },

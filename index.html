@@ -60,6 +60,10 @@ canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block
 #pts.on { animation: ptsUp .9s ease-out forwards; }
 @keyframes ptsUp { 0% { opacity: 1; transform: translate(-50%, -70px); } 100% { opacity: 0; transform: translate(-50%, -110px); } }
 /* crosshair + hit marker */
+/* M700 scope: black surround with a clear round lens and thin crosshair */
+#scope { position: absolute; inset: 0; display: none; background: radial-gradient(circle at 50% 50%, transparent 0, transparent min(34vh, 34vw), #000 calc(min(34vh, 34vw) + 2px)); }
+#scope.on { display: block; }
+#scope i { position: absolute; left: 50%; top: 50%; width: calc(min(68vh, 68vw)); height: calc(min(68vh, 68vw)); transform: translate(-50%, -50%); background: linear-gradient(#000, #000) center / 100% 1px no-repeat, linear-gradient(#000, #000) center / 1px 100% no-repeat; border-radius: 50%; box-shadow: inset 0 0 40px rgba(0,0,0,.8); }
 #xh { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: #fff; box-shadow: 0 0 2px #000; }
 #hit { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px; opacity: 0; }
 #hit.on { animation: hitPop .18s ease-out; }
@@ -153,6 +157,7 @@ canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block
   <div id="center"><div id="callout"><span class="ico"></span><span class="t"></span><small></small></div><div id="kill"></div></div>
   <div id="pts">+100</div>
   <div id="xh"></div>
+  <div id="scope"><i></i></div>
   <div id="hit"><svg viewBox="0 0 24 24"><path d="M4 4l5 5M20 4l-5 5M4 20l5-5M20 20l-5-5"/></svg></div>
   <div id="hurt"></div>
   <div id="ammo"><div id="wname">AK-47</div><div><span class="mag" id="mag">30</span><span class="res" id="res">180</span><span class="ab" id="kills">1 ☠</span></div></div>
@@ -180,7 +185,7 @@ canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block
     <div id="idrow"><input id="gname" maxlength="16" placeholder="GAMERTAG" autocomplete="off" spellcheck="false"><input id="gwallet" maxlength="44" placeholder="SOLANA WALLET (OPTIONAL)" autocomplete="off" spellcheck="false"></div>
     <button id="go">Deploy</button>
     <a class="hint" id="ladder" href="site/leaderboard.html">WEEKLY LEADERBOARD →</a>
-    <div class="hint" id="hint"><b>PRESS 2 TO ARM THE RPG-7</b> · 1 back to the AK-47 · Q swaps<br>WASD move · mouse aim · click fire · R reload · Shift sprint · Space jump · C crouch · 4 5 6 abilities · M mute</div>
+    <div class="hint" id="hint"><b>PRESS 2 TO ARM THE RPG-7</b> · 1 AK-47 · 3 MAC-10 · 7 MP5 · 8 M700 sniper · Q or mouse wheel cycles<br>WASD move · mouse aim · click fire · R reload · Shift sprint · Space jump · C crouch · 4 5 6 abilities · M mute</div>
   </div>
 </div>
 

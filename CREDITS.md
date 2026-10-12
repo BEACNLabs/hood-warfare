@@ -7,8 +7,8 @@
   security light, bed frame, road barrier, covered car, crates, jerrycan, manhole cover, street
   seating, bolt-action rifle, grass, shrubs, weeds, dandelion, dead trunk, island tree, small tree,
   jacaranda). https://polyhaven.com/license
-- **Classic Weapons Pack v1.1** by stein-indie (CC0 1.0) — `assets/models/ak47.glb` (AK-47 mesh and
-  2k PBR textures, converted from FBX in Blender). https://stein-indie.itch.io/classic-weapons-pack
+- **Classic Weapons Pack v1.1** by stein-indie (CC0 1.0) — `assets/models/ak47.glb`, `mac10.glb`, `mp5.glb`, `m700.glb`
+  (meshes and 2k PBR textures, converted from FBX in Blender by `tools/optimize.py`). https://stein-indie.itch.io/classic-weapons-pack
 - **Tripo Studio** (made on the owner's account, 2026-10-12) — `assets/chars/*.glb`: four original hoodie
   characters (reference images by GPT Image 2 inside Tripo → image-to-3D → 10k-quad retopology → Mixamo
   auto-rig → idle/walk/run/hit/fall presets). Original designs, no logos or real people.
