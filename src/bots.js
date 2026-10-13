@@ -53,8 +53,8 @@ function astar(sx, sz, tx, tz, maxExpand = 6000) {
 }
 
 // ---------- bots ----------
-const NAMES_RED = ['Merc', 'Alien11', 'Chaser', 'Connor8', 'alex.mercado2859', 'Vurt10', 'Kilo', 'Deebo', 'Lil Rook', 'Trigga'];
-const NAMES_BLUE = ['Homie', 'Dre', 'Quan', 'Marcus', 'Tay', 'Smoke', 'Lil Dee', 'Rico', 'Jojo', 'Bam'];
+const NAMES_RED = ['Main St', 'Belmont', 'Tivoli', 'Ogden', 'Maple', 'Fairview', 'Highland', 'Curtiss', 'Sarasota', 'Lincoln'];
+const NAMES_BLUE = ['Golf Road', 'Higgins', 'Bode', 'Poplar', 'Huntington', 'Village', 'Barrington', 'Palatine', 'Shoe Factory', 'Essex'];
 let botId = 0;
 const up = new THREE.Vector3(0, 1, 0);
 export class Bot {

@@ -58,7 +58,7 @@ export const hud = {
     g.drawImage(el.off, 0, 0);
     for (const d of dots) {
       if (d.team === 'red' && !snitch && !d.spotted) continue;
-      g.fillStyle = d.team === 'red' ? '#ff3b4a' : '#4aa8ff'; g.beginPath(); g.arc((d.pos.x + el.W / 2) * S, (d.pos.z + el.H / 2) * S, 2.6, 0, 6.3); g.fill();
+      g.fillStyle = d.team === 'red' ? '#e2c16b' : '#ff8a1e'; g.beginPath(); g.arc((d.pos.x + el.W / 2) * S, (d.pos.z + el.H / 2) * S, 2.6, 0, 6.3); g.fill();
     }
     g.restore();
     // player arrow (always pointing up)

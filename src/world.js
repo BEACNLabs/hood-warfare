@@ -1,4 +1,5 @@
-// The block: a Chicago residential street at dusk. Houses are kit-built from real PBR photo textures
+// The block: a Hoffman Estates side street at dusk. Downers Grove comes in from the far end.
+// Houses are kit-built from real PBR photo textures
 // (Poly Haven), props/fences/poles/trees are Poly Haven scans decimated in Blender.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -240,6 +241,23 @@ function wire(scene, a, b, mat, sag = 0.9) {
 }
 
 // ---------- main build ----------
+function townSign(scene, title, sub, x, z, rotY, colors) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024; canvas.height = 512;
+  const g = canvas.getContext('2d');
+  g.fillStyle = colors.bg; g.fillRect(0, 0, 1024, 512);
+  g.strokeStyle = colors.trim; g.lineWidth = 28; g.strokeRect(20, 20, 984, 472);
+  g.fillStyle = '#f7f4ee'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '700 92px sans-serif'; g.fillText(title, 512, 190);
+  g.fillStyle = colors.trim; g.font = '600 52px sans-serif'; g.fillText(sub, 512, 320);
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 8;
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.7), new THREE.MeshStandardMaterial({ map, roughness: 0.55, metalness: 0.04, side: THREE.DoubleSide }));
+  board.position.set(x, 2.2, z); board.rotation.y = rotY; board.castShadow = true; board.receiveShadow = true; scene.add(board);
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 2.3, 8), new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.7 }));
+  post.position.set(x, 1.05, z); post.castShadow = true; scene.add(post);
+}
+
 export async function buildWorld(scene, Q, progress = () => {}) {
   seed = 1337;
   const materials = {
@@ -444,6 +462,10 @@ export async function buildWorld(scene, Q, progress = () => {}) {
   for (const l of lots) if (rnd() < 0.55) shrubItems[Math.floor(rnd() * 2)].push({ x: l.side * rr(12, 13.4), z: l.zc + rr(-2.6, 2.6) * (l.side < 0 ? -1 : 1) * 0.5 - l.side * 0, r: rnd() * 6.28, s: rr(0.8, 1.3) });
   shrubs.forEach((s, i) => { if (shrubItems[i].length) instanced(scene, firstMesh(s), shrubItems[i], { cast: !Q.mobile }); });
   progress(0.9);
+
+  // Town signs. Hoffman Estates holds the near end; Downers Grove pushes from the far end.
+  townSign(scene, 'HOFFMAN ESTATES', 'GOLF ROAD', 6.6, 41, -Math.PI / 2, { bg: '#0c2340', trim: '#ff8a1e' });
+  townSign(scene, 'DOWNERS GROVE', 'MAIN STREET', 6.6, -41, -Math.PI / 2, { bg: '#3b1764', trim: '#e2c16b' });
 
   // ---------- map boundary ----------
   solid(MAP.minX - 2, MAP.minZ - 2, MAP.minX, MAP.maxZ + 2, 0, 6); solid(MAP.maxX, MAP.minZ - 2, MAP.maxX + 2, MAP.maxZ + 2, 0, 6);

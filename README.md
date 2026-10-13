@@ -2,12 +2,16 @@
   <img src="docs/banner.jpg" alt="Hood Warfare — a Chicago block at dusk" width="100%">
 </p>
 
-<h1 align="center">HOOD WARFARE</h1>
+<h1 align="center">MY HOOD</h1>
 
 <p align="center">
-  <b>A free browser FPS on a Chicago block at dusk. Every house breaks brick by brick. The weekly ladder pays USDC.</b><br>
-  <sub>6v6 team deathmatch · AK-47 + RPG-7 · phone and desktop · no download</sub>
+  <b>Hoffman Estates holds the block. Downers Grove is coming in from the far end.</b><br>
+  <sub>A private fork of Hood Warfare · 6v6 in the browser · the score stays on this machine</sub>
 </p>
+
+This fork is played on the house LAN. It does not post matches, wallets, or scores anywhere.
+The upstream weekly USDC ladder is not part of this copy. Credit for the game, the block, and the
+physics stays with [des35swim/hood-warfare](https://github.com/des35swim/hood-warfare).
 
 <p align="center">
   <img alt="Three.js" src="https://img.shields.io/badge/Three.js-r186-000?logo=threedotjs">
@@ -25,7 +29,7 @@
 
 ## The game
 
-A residential block on Chicago's south side at blue hour. Opps in red, homies in blue, six a side. You carry an
+A residential block in Hoffman Estates at blue hour. Downers Grove wears the gold, Hoffman Estates wears the orange, six a side. You carry an
 AK-47 and an RPG-7. Kills charge three abilities:
 
 | Key | Ability | What it does |

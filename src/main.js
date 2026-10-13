@@ -17,30 +17,24 @@ import { addWall, wallSpec, initDestruction, updateDestruction, destruction, bla
 import { WALL_LOTS, GEO, houseDescs } from './world.js';
 import { addHouse } from './destruction.js';
 import { initHud, hud } from './hud.js';
-import { renderLadder } from './ladder.js';
 import { initInput, input, poll, requestLock, TOUCH } from './input.js';
 import { unlockAudio, sfx, setListener, setMuted, isMuted } from './audio.js';
 
 const qs = new URLSearchParams(location.search);
-// weekly ladder (worker/): gamertag + optional wallet live in localStorage; results post at match end
-const API = qs.get('api') || 'https://hood-warfare-api.eugenelau9696.workers.dev';
-const ident = (() => { try { return JSON.parse(localStorage.getItem('hw.id') || '{}') || {}; } catch { return {}; } })();
-function saveIdent() { ident.name = $('gname').value.trim(); ident.wallet = $('gwallet').value.trim(); try { localStorage.setItem('hw.id', JSON.stringify(ident)); } catch {} }
-async function submitMatch() {
-  const lm = $('lmsg'); if (qs.get('nosubmit') === '1') return;
-  let me = null;
-  if (!ident.name) lm.textContent = 'SET A GAMERTAG BELOW TO BE RANKED ON THE WEEKLY LADDER';
-  else {
-    lm.textContent = 'POSTING TO THE WEEKLY LADDER…';
-    const body = { name: ident.name, wallet: ident.wallet || undefined, kills: player.kills, deaths: player.deaths, blue: score.blue, red: score.red, duration: Math.round(MATCH.time - MATCH.left) };
-    try {
-      const r = await fetch(API + '/api/match', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(9000) });
-      const j = await r.json();
-      if (j.ok) { me = { name: ident.name, rank: j.rank, points: j.points }; lm.textContent = `WEEKLY LADDER · #${j.rank} OF ${j.total} · +${j.earned} PTS (${j.points} THIS WEEK)`; }
-      else lm.textContent = 'LADDER: ' + (j.error || 'rejected').toUpperCase();
-    } catch (e) { lm.textContent = 'LADDER: COULD NOT REACH THE SERVER'; return; }
-  }
-  try { const r = await fetch(API + '/api/ladder?limit=10', { signal: AbortSignal.timeout(9000) }); const d = await r.json(); if (d.ok) renderLadder($('lboard'), d, me); } catch {}
+// House match. The name stays in this browser. Nothing is posted off the LAN.
+const ident = (() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem('mh.id') || 'null');
+    if (saved && saved.name) return { name: saved.name };
+    const old = JSON.parse(localStorage.getItem('hw.id') || '{}');
+    return { name: old.name || '' };
+  } catch { return { name: '' }; }
+})();
+function saveIdent() { ident.name = $('gname').value.trim(); try { localStorage.setItem('mh.id', JSON.stringify({ name: ident.name })); } catch {} }
+function submitMatch() {
+  const who = ident.name || 'You';
+  const held = score.blue > score.red ? 'HOFFMAN ESTATES HOLDS THE BLOCK' : score.blue === score.red ? 'THE BLOCK IS SPLIT' : 'DOWNERS GROVE TAKES THE BLOCK';
+  $('lmsg').textContent = `${held} · ${who.toUpperCase()} · ${player.kills} KILLS`;
 }
 const Q = { mobile: TOUCH || qs.get('mobile') === '1', silent: qs.get('silent') === '1', fps: 0, houses: qs.get('houses') !== '0' };
 const $ = (id) => document.getElementById(id);
@@ -120,7 +114,7 @@ const launcher = new Launcher(scene, camera, player, fx);
 const arsenal = { cur: 'ak', switchT: 0 };
 const bots = []; let trooper = null;
 const score = { red: 0, blue: 0 }; const MATCH = { limit: 100, time: 600, left: 600, over: false, started: false };
-const ab = { 4: { need: 3, have: 0, name: 'SNITCH', sub: 'PRESS [4]' }, 5: { need: 5, have: 0, name: 'HOMIES', sub: 'PRESS [5]' }, 6: { need: 4, have: 0, name: 'SUICIDE BOMBER', sub: 'PRESS [6]' } };
+const ab = { 4: { need: 3, have: 0, name: 'MARK DG', sub: 'PRESS [4]' }, 5: { need: 5, have: 0, name: 'HAWKS', sub: 'PRESS [5]' }, 6: { need: 4, have: 0, name: 'RUNNER', sub: 'PRESS [6]' } };
 let snitchUntil = 0, killStreak = 0, streakT = 0, time = 0, hurtK = 0, respawnAt = 0;
 const ghostMat = new THREE.MeshBasicMaterial({ color: 0xff3040, transparent: true, opacity: 0.4, depthTest: false, depthWrite: false, toneMapped: false });
 const ctx = {
@@ -156,13 +150,13 @@ function onDeath(victim, killer) {
 }
 function useAbility(n) {
   const a = ab[n]; if (!a || a.have < a.need || player.dead || MATCH.over) return; a.have = 0; sfx.ability();
-  if (n == 4) { sfx.snitch(); snitchUntil = time + 12; hud.callout('CALLED A SNITCH ON THE OPPS', 'ENEMIES MARKED 12 s'); for (const b of bots) if (b.team === 'red') b.spotted = time + 12; }
-  if (n == 5) { sfx.homies(); hud.callout('HOMIES INCOMING', 'TWO ON YOUR SIX · 40 s'); for (let i = 0; i < 2; i++) { const p = freeCellNear(player.pos.x + (Math.random() - 0.5) * 6, player.pos.z + (Math.random() - 0.5) * 6, 3); bots.push(new Bot(ctx, trooper, 'blue', p, { kind: 'homie', owner: player, expires: time + 40, name: i ? 'Lil Homie' : 'Big Homie' })); } }
-  if (n == 6) { hud.callout('BOMBER SENT', 'HE RUNS AT THE NEAREST OPP'); const p = freeCellNear(player.pos.x, player.pos.z + 2, 3); const b = new Bot(ctx, trooper, 'blue', p, { kind: 'bomber', owner: player, expires: time + 25, name: 'Bomber', speed: 5 }); b.lastSeen = ctx.hotspot('blue'); bots.push(b); }
+  if (n == 4) { sfx.snitch(); snitchUntil = time + 12; hud.callout('DOWNERS GROVE IS MARKED', 'EVERY VISITOR LIT FOR 12 s'); for (const b of bots) if (b.team === 'red') b.spotted = time + 12; }
+  if (n == 5) { sfx.homies(); hud.callout('HAWKS INCOMING', 'TWO FROM HOFFMAN ESTATES · 40 s'); for (let i = 0; i < 2; i++) { const p = freeCellNear(player.pos.x + (Math.random() - 0.5) * 6, player.pos.z + (Math.random() - 0.5) * 6, 3); bots.push(new Bot(ctx, trooper, 'blue', p, { kind: 'homie', owner: player, expires: time + 40, name: i ? 'Higgins' : 'Golf Road' })); } }
+  if (n == 6) { hud.callout('RUNNER SENT', 'HE GOES AT THE NEAREST DOWNERS GROVE'); const p = freeCellNear(player.pos.x, player.pos.z + 2, 3); const b = new Bot(ctx, trooper, 'blue', p, { kind: 'bomber', owner: player, expires: time + 25, name: 'Poplar', speed: 5 }); b.lastSeen = ctx.hotspot('blue'); bots.push(b); }
 }
 function endMatch() {
   MATCH.over = true; const win = score.blue > score.red; if (win) sfx.victory(); else sfx.defeat(); $('ov').classList.remove('off'); $('end').textContent = win ? 'VICTORY' : score.blue === score.red ? 'DRAW' : 'DEFEAT';
-  $('pmsg').textContent = `BLUE ${score.blue} · RED ${score.red} · YOU ${player.kills} KILLS / ${player.deaths} DEATHS`; $('go').textContent = 'Run it back'; $('go').classList.add('on'); $('hint').textContent = '';
+  $('pmsg').textContent = `HOFFMAN ESTATES ${score.blue} · DOWNERS GROVE ${score.red} · YOU ${player.kills} KILLS / ${player.deaths} DEATHS`; $('go').textContent = 'Run it back'; $('go').classList.add('on'); $('hint').textContent = '';
   submitMatch();
   if (document.exitPointerLock) document.exitPointerLock();
 }
@@ -171,7 +165,7 @@ function startMatch() {
   for (const b of bots) ctx.remove(b); bots.length = 0;
   for (let i = 0; i < 5; i++) bots.push(new Bot(ctx, trooper, 'blue', spawnPoint('blue')));
   for (let i = 0; i < 6; i++) bots.push(new Bot(ctx, trooper, 'red', spawnPoint('red')));
-  player.respawn(spawnPoint('blue')); for (const k in guns) { const g = guns[k]; g.mag = g.magSize; g.reserve = g.spec.reserve; g.holstered = k !== 'ak'; g.reloading = 0; } launcher.loaded = 1; launcher.reserve = 3; arsenal.cur = 'ak'; player.kills = 0; player.deaths = 0;
+  player.name = ident.name || 'You'; player.respawn(spawnPoint('blue')); for (const k in guns) { const g = guns[k]; g.mag = g.magSize; g.reserve = g.spec.reserve; g.holstered = k !== 'ak'; g.reloading = 0; } launcher.loaded = 1; launcher.reserve = 3; arsenal.cur = 'ak'; player.kills = 0; player.deaths = 0;
   hud.score(0, 0); $('ov').classList.add('off'); $('lmsg').textContent = ''; $('lboard').classList.remove('on'); requestLock(); unlockAudio();
   setTimeout(() => { if (MATCH.started && !MATCH.over) hud.callout(Q.mobile ? 'TAP SWAP TO CYCLE GUNS' : 'PRESS 2 TO ARM THE RPG-7', Q.mobile ? 'MAC-10 · MP5 · M700 · RPG-7' : '3 MAC-10 · 7 MP5 · 8 SNIPER · Q CYCLES'); }, 1800);
 }
@@ -231,7 +225,7 @@ async function boot() {
   destruction.onBlast = (p, n) => { for (let i = 0; i < Math.min(12, 4 + (n >> 3)); i++) fx.billow('puff', p.clone().add(new THREE.Vector3((Math.random() - 0.5) * 3, Math.random() * 1.5, (Math.random() - 0.5) * 3)), new THREE.Vector3((Math.random() - 0.5) * 4, 0.4 + Math.random() * 1.6, (Math.random() - 0.5) * 4), 2.2 + Math.random() * 1.6, 0.9, 4 + Math.random() * 2, { op: 0.75, tint: [0.085, 0.05, 0.035], drag: 1.8, rise: 0.15 }); };
   pmsg.textContent = 'Loading the AK…';
   await Promise.all(Object.values(guns).map((g) => g.load())); await launcher.load();
-  pmsg.textContent = 'Calling the homies…';
+  pmsg.textContent = 'Calling Hoffman Estates…';
   await loadCharacters(weapon.template3p);
   for (const g of Object.values(guns)) {
     g.rayTargets = (o, d, maxT) => rayVsBots(o, d, maxT, bots.filter((b) => b.team === 'red' || b.kind === 'bomber'));
@@ -261,8 +255,7 @@ async function boot() {
   pbar.style.width = '100%'; pmsg.textContent = Q.mobile ? 'Left thumb moves · right thumb aims · hold FIRE' : 'Click DEPLOY, then the mouse is locked to the game';
   $('go').classList.add('on');
   $('go').addEventListener('click', () => { startMatch(); });
-  $('gname').value = ident.name || ''; $('gwallet').value = ident.wallet || ''; for (const id of ['gname', 'gwallet']) $(id).addEventListener('change', saveIdent);
-  if (location.pathname.startsWith('/play/')) $('ladder').href = '../leaderboard.html';
+  $('gname').value = ident.name || ''; $('gname').addEventListener('change', saveIdent);
   if (Q.mobile) pmsg.textContent += ' · SWAP arms the RPG';
   if (qs.get('auto') === '1') startMatch();
   requestAnimationFrame(loop);
